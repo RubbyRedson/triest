@@ -1,38 +1,12 @@
 package se.kth.id2222.hw3
 
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import org.apache.flink.api.scala._
 
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
-/**
- * Implements the "WordCount" program that computes a simple word occurrence histogram
- * over some sample data
- *
- * This example shows how to:
- *
- *   - write a simple Flink program.
- *   - use Tuple data types.
- *   - write and use user-defined functions.
- */
+
 object HW3 {
   def main(args: Array[String]) {
 
@@ -46,29 +20,105 @@ object HW3 {
     val edges: DataSet[String] =
       env.readTextFile(input)
 
-    val counts = edges.flatMap { _.split("\t") }
+    val counts = edges.flatMap {
+      _.split("\t")
+    }
 
     // Reservoir sampling
-    val s = 10 // We want to maintain a sample of 50 random edges
-    var n = 0  // How many we have encountered
+    val s = 50 // Sample size
+    var n = 0 // How many we have encountered
     val rnd = new Random()
 
+    //Triest
+    var counters = new mutable.HashMap[String, Int]()
+    var globalSeen = 0
+    var globalEstimate : BigInt = 0
+    val graph = new mutable.HashMap[String, mutable.HashSet[String]]()
+
     val sample = new mutable.ArrayBuffer[String]()
-    counts.map {edge =>
+    counts.map { edge =>
       n += 1
       if (sample.size < s) {
         sample.append(edge)
+        val newEstimates = updateCounters(edge, counters, globalSeen, graph)
+        globalSeen = newEstimates._1
+        counters = newEstimates._2
+        //        println("Global estimate: " + globalEstimate)
+        //        println("Local estimates: " )
+        //        counters.foreach { case (node, counter) => print(node + " : " + counter + "\t") }
       }
       else {
         if (s.toDouble / n > rnd.nextDouble()) {
           sample.remove(rnd.nextInt(sample.size))
           sample.append(edge)
-          sample.foreach(s => print(s + "\t"))
-          println
+          val newEstimates = updateCounters(edge, counters, globalSeen, graph)
+          globalSeen = newEstimates._1
+          counters = newEstimates._2
+          //          println("Global estimate: " + globalEstimate)
+          //          println("Local estimates: " + counters.foreach { case (node, counter) => print(node + " : " + counter + "\t") })
         }
       }
+
+      if (sample.size > 3) {
+        var tmp : BigInt = n / sample.size * (n - 1) / (sample.size - 1) * (n - 2)  / (sample.size - 2)
+        if (tmp < 1) tmp = 1
+        globalEstimate = tmp * globalSeen
+      }
+      if (n % 10000 == 0) {
+        println("n: " + n + "\nGlobal seen: " + globalSeen + "\nGlobal estimate: " + globalEstimate + "\n--------")
+      }
+
     }
       .collect()
 
+  }
+
+  // Triest Base
+  def updateCounters(newEdge: String, counters: mutable.HashMap[String, Int],
+                     globalEstimate: Int, graph: mutable.HashMap[String, mutable.HashSet[String]]): (Int, mutable.HashMap[String, Int]) = {
+    val edges = newEdge.split(" ")
+    val (node1, node2) = (edges(0), edges(1))
+    var newGlobal = globalEstimate
+
+    if (graph.contains(node1)) graph(node1).add(node2)
+    else {
+      val set = new mutable.HashSet[String]()
+      set.add(node2)
+      graph.put(node1, set)
+    }
+
+    if (graph.contains(node2)) graph(node2).add(node1)
+    else {
+      val set = new mutable.HashSet[String]()
+      set.add(node1)
+      graph.put(node2, set)
+    }
+
+    val neighbours1 = graph(node1)
+    val neighbours2 = graph(node2)
+    val neigbourhood = neighbours1.intersect(neighbours2)
+
+    neigbourhood.foreach(mutualNeighbour => {
+      newGlobal += 1
+      if (counters.contains(mutualNeighbour)) {
+        counters(mutualNeighbour) = counters(mutualNeighbour) + 1
+      } else {
+        counters(mutualNeighbour) = 1
+      }
+
+      if (counters.contains(node1)) {
+        counters(node1) = counters(node1) + 1
+      } else {
+        counters(node1) = 1
+      }
+
+      if (counters.contains(node2)) {
+        counters(node2) = counters(node2) + 1
+      } else {
+        counters(node2) = 1
+      }
+    })
+
+    (newGlobal, counters)
   }
 }
