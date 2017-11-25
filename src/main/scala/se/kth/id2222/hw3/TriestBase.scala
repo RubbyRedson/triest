@@ -3,11 +3,10 @@ package se.kth.id2222.hw3
 import org.apache.flink.api.scala._
 
 import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
 
-object HW3 {
+object TriestBase {
   def main(args: Array[String]) {
 
     // set up the execution environment
@@ -77,7 +76,7 @@ object HW3 {
   def updateCounters(newEdge: String, counters: mutable.HashMap[String, Int],
                      globalEstimate: Int, graph: mutable.HashMap[String, mutable.HashSet[String]]): (Int, mutable.HashMap[String, Int]) = {
     val edges = newEdge.split(" ")
-    val (node1, node2) = (edges(0), edges(1))
+    val (node1, node2) = (edges(0).trim, edges(1).trim)
     var newGlobal = globalEstimate
 
     if (graph.contains(node1)) graph(node1).add(node2)
