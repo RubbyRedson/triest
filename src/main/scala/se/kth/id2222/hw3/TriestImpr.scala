@@ -26,7 +26,7 @@ object TriestImpr {
     }
 
     // Reservoir sampling
-    val s = 50 // Sample size
+    val s = 2000 // Sample size
     var n = 0 // How many we have encountered
     val rnd = new Random()
 

@@ -61,13 +61,10 @@ object TriestBase {
       }
 
       if (sample.size > 3) {
-        //var tmp : BigInt = n / sample.size * (n - 1) / (sample.size - 1) * (n - 2)  / (sample.size - 2)
-
         var tmp : java.math.BigInteger = new BigInteger(n.toString).multiply(new BigInteger((n - 1).toString))
           .multiply(new BigInteger((n - 2).toString)).divide(new BigInteger((sample.size).toString))
           .divide(new BigInteger((sample.size - 1).toString)).divide(new BigInteger((sample.size - 2).toString))
 
-        //var tmp : BigInt = (n * (n - 1) * (n - 2))  / (sample.size  * (sample.size - 1) * (sample.size - 2))
         tmp = tmp.max(BigInteger.ONE)
         globalEstimate = tmp.multiply(new BigInteger(globalSeen.toString))
       }
