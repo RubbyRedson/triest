@@ -26,7 +26,7 @@ object TriestBase {
     }
 
     // Reservoir sampling
-    val s = 50 // Sample size, corresponds to M in the paper
+    val s = 2000 // Sample size, corresponds to M in the paper
     var n = 0 // How many we have encountered
     val rnd = new Random()
 
@@ -47,7 +47,12 @@ object TriestBase {
       }
       else {
         if (s.toDouble / n > rnd.nextDouble()) {
-          sample.remove(rnd.nextInt(sample.size))
+          val edgeToRemove = rnd.nextInt(sample.size)
+          val estimatesAfterDeletion = updateCountersEdgeDeletion(sample(edgeToRemove), counters, globalSeen, graph)
+          globalSeen = estimatesAfterDeletion._1
+          counters = estimatesAfterDeletion._2
+
+          sample.remove(edgeToRemove)
           sample.append(edge)
           val newEstimates = updateCounters(edge, counters, globalSeen, graph)
           globalSeen = newEstimates._1
@@ -120,6 +125,36 @@ object TriestBase {
         counters(node2) = 1
       }
     })
+
+    (newGlobal, counters)
+  }
+
+  def updateCountersEdgeDeletion(newEdge: String, counters: mutable.HashMap[String, Int],
+                                 globalSeen: Int, graph: mutable.HashMap[String, mutable.HashSet[String]]): (Int, mutable.HashMap[String, Int]) = {
+    val edges = newEdge.split(" ")
+    val (node1, node2) = (edges(0).trim, edges(1).trim)
+    var newGlobal = globalSeen
+
+    val neighbours1 = graph(node1)
+    val neighbours2 = graph(node2)
+    val neigbourhood = neighbours1.intersect(neighbours2)
+
+    neigbourhood.foreach(mutualNeighbour => {
+      newGlobal -= 1
+      counters(mutualNeighbour) = counters(mutualNeighbour) - 1
+      counters(node1) = counters(node1) - 1
+      counters(node2) = counters(node2) - 1
+
+      if (counters(mutualNeighbour) == 0) counters.remove(mutualNeighbour)
+      if (counters(node1) == 0) counters.remove(node1)
+      if (counters(node2) == 0) counters.remove(node2)
+    })
+
+    graph(node1).remove(node2)
+    graph(node2).remove(node1)
+
+    if (graph(node1).isEmpty) graph.remove(node1)
+    if (graph(node2).isEmpty) graph.remove(node2)
 
     (newGlobal, counters)
   }
