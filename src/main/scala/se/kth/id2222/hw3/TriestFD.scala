@@ -72,7 +72,7 @@ object TriestFD {
       } else {
         d0 += 1
       }
-      if (n % 10000 == 0) {
+      if (n % 40000 == 0) {
         println("n: " + n + "\nGlobal estimate: " + globalEstimate + "\n--------")
       }
 
@@ -81,7 +81,7 @@ object TriestFD {
 
   }
 
-  // Triest Improved
+  // Triest FD
   def updateCounters(newEdge: String, counters: mutable.HashMap[String, BigInt],
                      globalEstimate: BigInt, graph: mutable.HashMap[String, mutable.HashSet[String]],
                      n: Int, m: Int, di: Int, d0: Int): (BigInt, mutable.HashMap[String, BigInt]) = {

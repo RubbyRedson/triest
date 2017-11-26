@@ -1,5 +1,7 @@
 package se.kth.id2222.hw3
 
+import java.math.BigInteger
+
 import org.apache.flink.api.scala._
 
 import scala.collection.mutable
@@ -29,8 +31,8 @@ object TriestImpr {
     val rnd = new Random()
 
     //Triest
-    var counters = new mutable.HashMap[String, BigInt]()
-    var globalEstimate: BigInt = 0
+    var counters = new mutable.HashMap[String, BigInteger]()
+    var globalEstimate: BigInteger = BigInteger.ZERO
     val graph = new mutable.HashMap[String, mutable.HashSet[String]]()
 
     val sample = new mutable.ArrayBuffer[String]()
@@ -51,7 +53,7 @@ object TriestImpr {
         }
       }
 
-      if (n % 10000 == 0) {
+      if (n % 40000 == 0) {
         println("n: " + n + "\nGlobal estimate: " + globalEstimate + "\n--------")
       }
 
@@ -61,12 +63,12 @@ object TriestImpr {
   }
 
   // Triest Improved
-  def updateCounters(newEdge: String, counters: mutable.HashMap[String, BigInt],
-                     globalEstimate: BigInt, graph: mutable.HashMap[String, mutable.HashSet[String]],
-                     n: Int, m: Int): (BigInt, mutable.HashMap[String, BigInt]) = {
+  def updateCounters(newEdge: String, counters: mutable.HashMap[String, BigInteger],
+                     globalEstimate: BigInteger, graph: mutable.HashMap[String, mutable.HashSet[String]],
+                     n: Int, m: Int): (BigInteger, mutable.HashMap[String, BigInteger]) = {
     val edges = newEdge.split(" ")
     val (node1, node2) = (edges(0).trim, edges(1).trim)
-    var newGlobal = globalEstimate
+    var newGlobal : BigInteger = globalEstimate
 
     if (graph.contains(node1)) graph(node1).add(node2)
     else {
@@ -87,25 +89,26 @@ object TriestImpr {
     val neigbourhood = neighbours1.intersect(neighbours2)
 
     if (m > 2 && n > 2) {
-      var coeff = (n - 1) / (m - 1) * (n - 2) / m // compute the nu (weighted increase)
-      if (coeff < 1) coeff = 1
+      var coeff : BigInteger = new BigInteger((n - 1).toString).multiply(new BigInteger((n - 2).toString))
+        .divide(new BigInteger((m).toString)).divide(new BigInteger((m-1).toString))  // compute the nu (weighted increase)
+      coeff = coeff.max(BigInteger.ONE)
 
       neigbourhood.foreach(mutualNeighbour => {
-        newGlobal += coeff
+        newGlobal = newGlobal.add(coeff)
         if (counters.contains(mutualNeighbour)) {
-          counters(mutualNeighbour) = counters(mutualNeighbour) + coeff
+          counters(mutualNeighbour) = counters(mutualNeighbour).add(coeff)
         } else {
           counters(mutualNeighbour) = coeff
         }
 
         if (counters.contains(node1)) {
-          counters(node1) = counters(node1) + coeff
+          counters(node1) = counters(node1).add(coeff)
         } else {
           counters(node1) = coeff
         }
 
         if (counters.contains(node2)) {
-          counters(node2) = counters(node2) + coeff
+          counters(node2) = counters(node2).add(coeff)
         } else {
           counters(node2) = coeff
         }
